@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Security Staff 2 Pass Log</title>
+</head>
+<body>
+    <h2>Security Staff 2 Dashboard</h2>
+    <form method="GET">
+        <label>Select Date:</label>
+        <input type="date" name="date" value="{{ date }}">
+        <button type="submit">Filter</button>
+    </form>
+
+    <form method="POST">
+        <table border="1" cellpadding="8">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Roll Number</th>
+                    <th>Pass Type</th>
+                    <th>Purpose</th>
+                    <th>Out</th>
+                    <th>Out Time</th>
+                    <th>In</th>
+                    <th>In Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in passes %}
+                    {% if p.name %}
+                    <tr>
+                        <td>{{ p.name }}</td>
+                        <td>{{ p.roll }}</td>
+                        <td>{{ p.pass_type }}</td>
+                        <td>{{ p.purpose }}</td>
+                        <td>
+                            {% if not p.out_status %}
+                                <input type="checkbox" name="out_{{ p.id }}" onchange="this.form.submit()">
+                            {% else %} ✅ {% endif %}
+                        </td>
+                        <td>{{ p.out_time or "" }}</td>
+                        <td>
+                            {% if not p.in_status %}
+                                <input type="checkbox" name="in_{{ p.id }}" onchange="this.form.submit()">
+                            {% else %} ✅ {% endif %}
+                        </td>
+                        <td>{{ p.in_time or "" }}</td>
+                    </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Warden Dashboard (SS2)</title>
+</head>
+<body>
+    <h2>Students Currently Not in Hostel (SS2)</h2>
+
+    <table border="1" cellpadding="8">
+        <thead>
+            <tr>
+                <th>Room Number</th>
+                <th>Name</th>
+                <th>Roll Number</th>
+                <th>Pass Type</th>
+                <th>Purpose</th>
+                <th>Out Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in students %}
+            <tr>
+                <td>{{ s.room }}</td>
+                <td>{{ s.name }}</td>
+                <td>{{ s.roll }}</td>
+                <td>{{ s.pass_type }}</td>
+                <td>{{ s.purpose }}</td>
+                <td>{{ s.out_time }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6">All students are currently in the hostel.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Apply for Outpass</title>
+</head>
+<body>
+    <h2>Apply for Outpass</h2>
+    <form action="/submit_outpass" method="POST">
+        <input type="hidden" name="email" value="{{ email }}">
+
+        <label for="date">Date of Outpass:</label><br>
+        <input type="date" id="date" name="date" required><br><br>
+
+        <label for="purpose">Purpose:</label><br>
+        <input type="text" id="purpose" name="purpose" required></textarea><br><br>
+
+        <input type="submit" value="Submit Outpass Request">
+    </form>
+</body>
+</html>

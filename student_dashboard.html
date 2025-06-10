@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Student Dashboard</title>
+</head>
+<body>
+
+    <h1>Welcome, {{ name }}!</h1>
+    <p>Roll No: {{ roll_number }}</p>
+    <p>Course: {{ course }}</p>
+    <p>Department: {{ department }}</p>
+    <p>Room No: {{ room_number }}</p>
+    <p>Parent's Phone: {{ parent_phone_number }}</p>
+    <p>Email: {{ email }}</p>
+
+    <!-- Apply for Pass Section -->
+    <h2>Apply for Pass</h2>
+    <button onclick="window.location.href='/apply_homepass?email={{ email }}'">Apply for Homepass</button>
+    <button onclick="window.location.href='/apply_outpass?email={{ email }}'">Apply for Outpass</button>
+
+    <!-- Previous Passes Section -->
+    <h2>Previous Homepasses</h2>
+    <table border="1" cellpadding="5">
+        <tr><th>Date</th><th>Purpose</th></tr>
+        {% for hp in homepasses %}
+        <tr>
+            <td>{{ hp[0] }}</td>
+            <td>{{ hp[1] }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="2">No homepasses found.</td></tr>
+        {% endfor %}
+    </table>
+
+    <h2>Previous Outpasses</h2>
+    <table border="1" cellpadding="5">
+        <tr><th>Date</th><th>Purpose</th></tr>
+        {% for op in outpasses %}
+        <tr>
+            <td>{{ op[0] }}</td>
+            <td>{{ op[1] }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="2">No outpasses found.</td></tr>
+        {% endfor %}
+    </table>
+
+</body>
+</html>

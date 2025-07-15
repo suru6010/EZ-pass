@@ -1,148 +1,139 @@
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, request, render_template, redirect, url_for, flash, session
 from random import randint
 from datetime import datetime, timedelta
 from twilio.rest import Client
 import mysql.connector
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key_here'  # Required for session and flash
+
+# Database connection
 
 db = mysql.connector.connect(
     host="localhost",
-    user="root", 
-    password="Slushie3345", 
-    database="ezpass"   
+    user="root",
+    password="Slushie3345",
+    database="ezpass"
 )
 cursor = db.cursor()
+
+# Twilio Configuration
+TWILIO_ACCOUNT_SID = "!ASjiovewr9r3280qHUQ12E1U[DN"
+TWILIO_AUTH_TOKEN = "!ASjiovewr9r3280qHUQ12E1U[DN"
+TWILIO_PHONE_NUMBER = "+12317296435"
+
+# ----------------------- HOME AND STUDENT ROUTES ------------------------
 
 @app.route('/')
 def home():
     return render_template('home.html')
 
-# Route for the main page where student chooses sign up or login
-@app.route("/student")
-def index():
-    return render_template("index.html")
+@app.route('/student')
+def student_home():
+    return render_template('index.html')
 
-# Route for the student Sign Up page
-@app.route("/signup")
+@app.route('/signup')
 def signup():
-    return render_template("signup.html")
+    return render_template('signup.html')
 
-# Route to handle Student Sign Up form submission
-@app.route("/submit_signup", methods=["POST"])
-def submit_student_signup():
+@app.route('/submit_signup', methods=['POST'])
+def handle_student_signup():
     email = request.form.get("email")
     password = request.form.get("password")
     confirm_password = request.form.get("confirm_password")
 
-    # Check if the passwords match
     if password != confirm_password:
         return "Passwords do not match!"
 
-    # Check if the student email is already registered
     cursor.execute("SELECT * FROM students WHERE email = %s", (email,))
-    existing_student = cursor.fetchone()
+    if cursor.fetchone():
+        return "Email already registered."
 
-    if existing_student:
-        return "Email is already registered."
-
-    # Insert new student record into 'students' table
     cursor.execute("INSERT INTO students (email, password) VALUES (%s, %s)", (email, password))
     db.commit()
-
-    # Redirect to student login page
     return redirect(url_for('login'))
 
-# Route for the student Login page
-@app.route("/login")
+@app.route('/login')
 def login():
-    return render_template("login.html")
+    return render_template('login.html')
 
-# Route to handle Student Login form submission
-@app.route("/submit_login", methods=["POST"])
-def submit_student_login():
+@app.route('/submit_login', methods=['POST'])
+def handle_student_login():
     email = request.form.get("email")
     password = request.form.get("password")
 
-    # Check if the user exists and password matches
     cursor.execute("SELECT * FROM students WHERE email = %s AND password = %s", (email, password))
     student = cursor.fetchone()
 
     if student:
-        # Login successful, redirect to student dashboard
-        return redirect(url_for('student_dashboard', email=email))
+        session['email'] = email
+        return redirect(url_for('student_dashboard'))
     else:
-        # Invalid credentials
-        return "Invalid email or password!"
+        return "Invalid email or password."
 
-@app.route("/student_dashboard")
+@app.route('/student_dashboard')
 def student_dashboard():
-    email = request.args.get("email")  # Extract email from query string
+    email = session.get('email')
+    if not email:
+        return redirect(url_for('login'))
 
-    if email:
-        # Fetch student details
-        cursor.execute("SELECT * FROM student_details WHERE email = %s", (email,))
-        student = cursor.fetchone()
+    cursor.execute("SELECT * FROM student_details WHERE email = %s", (email,))
+    student = cursor.fetchone()
+    if not student:
+        return "Student not found!"
 
-        if student:
-            name = student[1]
-            roll_number = student[2]
-            course = student[3]
-            department = student[4]
-            room_number = student[5]
-            parent_phone_number = student[6]
-            email = student[7]
+    name, roll, course, dept, room, parent_number, email = student[1:]
 
-            # Fetch previous homepasses
-            cursor.execute("SELECT date, purpose FROM homepasses WHERE email = %s ORDER BY date DESC", (email,))
-            homepasses = cursor.fetchall()
+    cursor.execute("SELECT date, purpose FROM homepasses WHERE email = %s ORDER BY date DESC", (email,))
+    homepasses = cursor.fetchall()
 
-            # Fetch previous outpasses
-            cursor.execute("SELECT date, purpose FROM outpasses WHERE email = %s ORDER BY date DESC", (email,))
-            outpasses = cursor.fetchall()
+    cursor.execute("SELECT date, purpose FROM outpasses WHERE email = %s ORDER BY date DESC", (email,))
+    outpasses = cursor.fetchall()
 
-            return render_template('student_dashboard.html',
-                                   name=name,
-                                   roll_number=roll_number,
-                                   course=course,
-                                   department=department,
-                                   room_number=room_number,
-                                   parent_phone_number=parent_phone_number,
-                                   email=email,
-                                   homepasses=homepasses,
-                                   outpasses=outpasses)
-        else:
-            return "Student not found!"
-    return "Email is required."
+    return render_template('student_dashboard.html', name=name, roll_number=roll,
+                           course=course, department=dept, room_number=room,
+                           parent_phone_number=parent_number, email=email,
+                           homepasses=homepasses, outpasses=outpasses)
 
-@app.route("/apply_homepass")
+@app.route('/apply_homepass')
 def apply_homepass():
-    email = request.args.get("email")
-    return render_template('homepass_form.html', email = email)
+    email = session.get('email')
+    return render_template('homepass_form.html', email=email)
 
-@app.route("/submit_homepass", methods=["POST"])
+@app.route('/submit_homepass', methods=['POST'])
 def submit_homepass():
-    email = request.form.get("email")
-    date = request.form.get("date")
-    purpose = request.form.get("purpose")
-    cursor.execute("SELECT parent_phone_number,name FROM student_details WHERE email = %s", (email,))
+    email = request.form.get('email')
+    date = request.form.get('date')
+    purpose = request.form.get('purpose')
+
+    cursor.execute("SELECT parent_phone_number, name FROM student_details WHERE email = %s", (email,))
     result = cursor.fetchone()
-    
+
     if not result:
         return "Student not found!"
-    
-    parent_number = result[0]
-    name = result[1]
-    
+
+    parent_number, name = result
+
     otp = randint(100000, 999999)
     expiry = datetime.now() + timedelta(minutes=5)
     cursor.execute("INSERT INTO otp_verification (email, otp, expires_at) VALUES (%s, %s, %s)",
                    (email, otp, expiry))
     db.commit()
-  
+
+    # Send OTP via Twilio
+    try:
+        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        client.messages.create(
+            body=f"Hello! OTP for approving {name}'s homepass is {otp}. Valid for 5 minutes.",
+            from_=TWILIO_PHONE_NUMBER,
+            to=parent_number
+        )
+    except Exception as e:
+        return f"Failed to send OTP: {str(e)}"
+
     return render_template("verify_otp.html", email=email, date=date, purpose=purpose)
 
-@app.route("/verify_otp", methods=["POST"])
+@app.route('/verify_otp', methods=['POST'])
 def verify_otp():
     email = request.form.get("email")
     otp = request.form.get("otp")
@@ -153,50 +144,37 @@ def verify_otp():
     record = cursor.fetchone()
 
     if not record:
-        return "No OTP found. Please try again."
+        return "No OTP found."
 
     stored_otp, expires_at = record
     if otp == str(stored_otp) and datetime.now() < expires_at:
-        # Save the homepass request in the database
-        cursor.execute("INSERT INTO passlog_ss2 (email, date, purpose,pass_type) VALUES (%s, %s, %s, %s)", (email, date, purpose,"Homepass"))
-        db.commit()
-        # Insert pass details into passlog1 (for Security Staff 1)
-        cursor.execute("INSERT INTO passlog_ss1 (email, date, purpose,pass_type) VALUES (%s, %s, %s,%s)", (email, date, purpose,"Homepass"))
-        db.commit()
-
-        # Insert pass details into passlog2 (for Security Staff 2)
+        cursor.execute("INSERT INTO passlog_ss2 (email, date, purpose, pass_type) VALUES (%s, %s, %s, 'Homepass')",
+                       (email, date, purpose))
+        cursor.execute("INSERT INTO passlog_ss1 (email, date, purpose, pass_type) VALUES (%s, %s, %s, 'Homepass')",
+                       (email, date, purpose))
         cursor.execute("INSERT INTO homepasses (email, date, purpose) VALUES (%s, %s, %s)", (email, date, purpose))
         db.commit()
-        
         return "Homepass generated successfully!"
     else:
         return "Invalid or expired OTP."
 
-@app.route("/apply_outpass")
+@app.route('/apply_outpass')
 def apply_outpass():
-    email = request.args.get("email")
-    return render_template('outpass_form.html', email = email)
+    email = session.get('email')
+    return render_template('outpass_form.html', email=email)
 
-@app.route("/submit_outpass", methods=["POST"])
+@app.route('/submit_outpass', methods=['POST'])
 def submit_outpass():
     email = request.form.get("email")
     date = request.form.get("date")
     purpose = request.form.get("purpose")
 
-    # Insert into MySQL 'outpasses' table
-    cursor.execute("INSERT INTO outpasses (email, date, purpose) VALUES (%s, %s, %s)", 
+    cursor.execute("INSERT INTO outpasses (email, date, purpose) VALUES (%s, %s, %s)", (email, date, purpose))
+    cursor.execute("INSERT INTO passlog_ss1 (email, date, purpose, pass_type) VALUES (%s, %s, %s, 'Outpass')",
+                   (email, date, purpose))
+    cursor.execute("INSERT INTO passlog_ss2 (email, date, purpose, pass_type) VALUES (%s, %s, %s, 'Outpass')",
                    (email, date, purpose))
     db.commit()
-    
-     # Insert pass details into passlog1 (for Security Staff 1)
-    cursor.execute("INSERT INTO passlog_ss1 (email, date, purpose, pass_type) VALUES (%s, %s, %s,%s)", (email, date, purpose,"Outpass"))
-    db.commit()
-
-        # Insert pass details into passlog2 (for Security Staff 2)
-    cursor.execute("INSERT INTO passlog_ss2 (email, date, purpose,pass_type) VALUES (%s, %s, %s,%s)", (email, date, purpose,"Outpass"))
-    db.commit()
-        
-
     return "Outpass submitted successfully!"
 
 # Route for the ss1 Login page
@@ -384,4 +362,6 @@ def warden_dashboard():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
 

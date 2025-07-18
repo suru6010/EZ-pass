@@ -12,7 +12,6 @@ app.secret_key = 'your_secret_key_here'  # Required for session and flash
 db = mysql.connector.connect(
     host="localhost",
     user="root",
-    password="Slushie3345",
     database="ezpass"
 )
 cursor = db.cursor()
